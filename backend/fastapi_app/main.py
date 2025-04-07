@@ -2,9 +2,10 @@
 FastAPI app for the transcription service
 """
 
-from uuid import UUID
+from base64 import b64decode
 
-from fastapi import FastAPI, File, UploadFile, status
+from fastapi import FastAPI, Form, status
+from loguru import logger
 
 from backend.transcribe.transcribe import transcribe_file
 
@@ -12,13 +13,15 @@ app = FastAPI()
 
 
 @app.post("/{tenant_id}/transcribe")
-async def transcribe(tenant_id: UUID, file: UploadFile = File(...)):
+async def transcribe(tenant_id: str, file: str = Form(...)):
     """
     Transcribe a file and return the transcription
     """
+
+    logger.info(f"tenant_id: {tenant_id}")
     try:
         # Get the file content
-        file_content = await file.read()
+        file_content = b64decode(file.split(",")[1])
     except (TimeoutError, ConnectionError) as e:
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         detail = str(e)
