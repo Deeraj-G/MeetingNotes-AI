@@ -29,31 +29,58 @@ async def transcribe_file(tenant_id: str, file_content: bytes) -> str:
 
     logger.info(f"file content type: {type(file_content)}")
 
-    file = convert_to_file(file_content)
+
+    try:
+        file = convert_to_file(file_content)
+    except Exception as e:
+        logger.error(f"Error converting file: {e}")
+        raise e
+
+    logger.info(f"FILE: {file}")
 
     # Upload the file to OpenAI
     response = client.audio.transcriptions.create(
         model="whisper-1",
-        file=file,
+        file=("audio.mp3", file),
         language="en",
         temperature=0.15,
-        prompt="You are a helpful assistant that transcribes audio. You are given a file and you need to transcribe it.",
-        response_format="text"
+        prompt=(
+            "Transcribe the conversation, performing speaker diarization. "
+            "Identify each speaker and label their utterances consistently (e.g., 'speaker_1', 'speaker_2', ...). "
+            "The output must be a Python list of strings, ordered chronologically. "
+            "Each string in the list must strictly follow the format: 'speaker_N: Transcribed text'. "
+            "Example of expected output structure: "
+            "['speaker_1: First utterance.', 'speaker_2: Response utterance.', 'speaker_1: Follow-up utterance.']"
+        ),
+        response_format="verbose_json"
     )
 
-    logger.info(f"Transcription response: {response.text}")
+    logger.info(f"Transcription response: {type(response)}")
+    logger.info(f"Transcription response: {response}")
 
-    return response.text
+    return response
 
-def convert_to_file(file_content: str):
+def convert_to_file(file_content: bytes) -> io.BytesIO:
     """
-    Convert a bytes object to a file
+    Convert input audio bytes to an MP3 in-memory file-like object.
     """
+    try:
+        # Load audio from bytes. Pydub attempts to detect the format
+        audio_segment = AudioSegment.from_file(io.BytesIO(file_content))
 
-    # Convert file_content to MP3 format
-    audio = AudioSegment.from_file(io.BytesIO(file_content))
-    mp3_io = io.BytesIO()
-    audio.export(mp3_io, format="mp3")
-    return mp3_io.seek(0)
+        # Create an in-memory bytes buffer
+        output_io = io.BytesIO()
 
-    
+        # Export the audio segment to the buffer in mp3 format
+        audio_segment.export(output_io, format="mp3")
+
+        # Reset the buffer's position to the beginning
+        output_io.seek(0)
+        return output_io
+    except FileNotFoundError as e:
+        logger.error("Error: Audio file not found.")
+        raise e
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        raise e
+
