@@ -2,14 +2,13 @@
 Transcribe a file using OpenAI's Whisper API
 """
 
-import os
 import io
-
-from pydub import AudioSegment
+import os
 
 from dotenv import load_dotenv
 from loguru import logger
 from openai import OpenAI
+from pydub import AudioSegment
 
 load_dotenv()
 
@@ -28,7 +27,6 @@ async def transcribe_file(tenant_id: str, file_content: bytes) -> str:
         raise ValueError(f"{missing} is required")
 
     logger.info(f"file content type: {type(file_content)}")
-
 
     try:
         file = convert_to_file(file_content)
@@ -52,13 +50,14 @@ async def transcribe_file(tenant_id: str, file_content: bytes) -> str:
             "Example of expected output structure: "
             "['speaker_1: First utterance.', 'speaker_2: Response utterance.', 'speaker_1: Follow-up utterance.']"
         ),
-        response_format="verbose_json"
+        response_format="verbose_json",
     )
 
     logger.info(f"Transcription response: {type(response)}")
     logger.info(f"Transcription response: {response}")
 
     return response
+
 
 def convert_to_file(file_content: bytes) -> io.BytesIO:
     """
@@ -83,4 +82,3 @@ def convert_to_file(file_content: bytes) -> io.BytesIO:
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}")
         raise e
-
